@@ -32,26 +32,29 @@ class Granger_k():
 		self.burn_in=burn_in
 		initial_value=1.0/self.d		
 		self.k_v=[initial_time]
-		self.Mu_v=[np.ones(shape=(self.d))*initial_value]
+		self.Mu1_v=[np.ones(shape=(self.d))*initial_value]
+		self.Mu2_v=[np.ones(shape=(self.d))*initial_value]
 		self.Alpha1_v=[np.ones(shape=(self.d,self.d))*initial_value]
 		self.Alpha2_v=[np.ones(shape=(self.d,self.d))*initial_value]
 
 		k=self.k_v[0]
-		Mu=self.Mu_v[0]
+		Mu1=self.Mu1_v[0]
+		Mu2=self.Mu2_v[0]
 		Alpha1=self.Alpha1_v[0]
 		Alpha2=self.Alpha2_v[0]
 
 		self.reject_k=0.
-		self.reject_mu=[0.]*self.d
+		self.reject_mu1=[0.]*self.d
+		self.reject_mu2=[0.]*self.d
 		self.reject_alpha1=[[0.]*self.d for i in range(self.d)]
 		self.reject_alpha2=[[0.]*self.d for i in range(self.d)]
 
 		for i in range(self.n_iter):
 			t_begin=time()
 			######## k ########
-			past_p_k=P_k(self.k_v[-1],self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],self.Mu_v[-1],self.timestamps,self.deltas)
+			past_p_k=P_k(self.k_v[-1],self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],self.Mu1_v[-1],self.Mu2_v[-1],self.timestamps,self.deltas)
 			new_k=ss.norm.rvs(self.k_v[-1],var_k)
-			new_p_k=P_k(new_k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],self.Mu_v[-1],self.timestamps,self.deltas)
+			new_p_k=P_k(new_k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],self.Mu1_v[-1],self.Mu2_v[-1],self.timestamps,self.deltas)
 			
 			r=calc_ratio(new_p_k - past_p_k)
 			
@@ -65,30 +68,45 @@ class Granger_k():
 			k=self.k_v[-1]
 			########  ########
 
-			new_Mu=np.copy(self.Mu_v[-1])
+			new_Mu1=np.copy(self.Mu1_v[-1])
+			new_Mu2=np.copy(self.Mu2_v[-1])
 			new_Alpha1=np.copy(self.Alpha1_v[-1])
 			new_Alpha2=np.copy(self.Alpha2_v[-1])
 			for p1 in range(self.d):
-				######## Mu ########
-				past_p_Mu=P_mu(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu,self.timestamps,self.deltas)
-				new_Mu[p1]=ss.norm.rvs(self.Mu_v[-1][p1],scale=var_mu)
-				new_p_Mu=P_mu(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu,self.timestamps,self.deltas)
+				######## Mu1 ########
+				past_p_Mu1=P_mu1(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu1,new_Mu2,self.timestamps,self.deltas)
+				new_Mu1[p1]=ss.norm.rvs(self.Mu1_v[-1][p1],scale=var_mu)
+				new_p_Mu1=P_mu1(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu1,new_Mu2,self.timestamps,self.deltas)
 				
-				r=calc_ratio(new_p_Mu-past_p_Mu)
+				r=calc_ratio(new_p_Mu1-past_p_Mu1)
 
 				if(r>=1 or ss.uniform.rvs()<r):
 					pass
 				else:
-					new_Mu[p1]=self.Mu_v[-1][p1]
-					self.reject_mu[p1]+=1
+					new_Mu1[p1]=self.Mu1_v[-1][p1]
+					self.reject_mu1[p1]+=1
 				##########  ########
 				
+				######## Mu2 ########
+				past_p_Mu2=P_mu2(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu1,new_Mu2,self.timestamps,self.deltas)
+				new_Mu2[p1]=ss.norm.rvs(self.Mu1_v[-1][p1],scale=var_mu)
+				new_p_Mu2=P_mu2(p1,k,self.d,self.T,self.Alpha1_v[-1],self.Alpha2_v[-1],new_Mu1,new_Mu2,self.timestamps,self.deltas)
+				
+				r=calc_ratio(new_p_Mu2-past_p_Mu2)
+
+				if(r>=1 or ss.uniform.rvs()<r):
+					pass
+				else:
+					new_Mu2[p1]=self.Mu2_v[-1][p1]
+					self.reject_mu2[p1]+=1
+				##########  ########
+
 				for p2 in range(self.d):
 
 					##### Alpha1 #####
-					past_p_Alpha1=P_alpha1(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu,self.timestamps,self.deltas)
+					past_p_Alpha1=P_alpha1(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu1,new_Mu2,self.timestamps,self.deltas)
 					new_Alpha1[p2][p1]=ss.norm.rvs(self.Alpha1_v[-1][p2][p1],scale=var_alpha)
-					new_p_Alpha1=P_alpha1(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu,self.timestamps,self.deltas)
+					new_p_Alpha1=P_alpha1(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu1,new_Mu2,self.timestamps,self.deltas)
 					r=calc_ratio(new_p_Alpha1- past_p_Alpha1)	 
 					if(r>=1 or ss.uniform.rvs()<r):
 						#past_p_Alpha1[p1][p2]=new_p_Alpha1  
@@ -98,9 +116,9 @@ class Granger_k():
 						self.reject_alpha1[p2][p1]+=1
 						
 					##### Alpha2 #####
-					past_p_Alpha2=P_alpha2(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu,self.timestamps,self.deltas)
+					past_p_Alpha2=P_alpha2(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu1,new_Mu2,self.timestamps,self.deltas)
 					new_Alpha2[p2][p1]=ss.norm.rvs(self.Alpha2_v[-1][p2][p1],scale=var_alpha)
-					new_p_Alpha2=P_alpha2(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu,self.timestamps,self.deltas)
+					new_p_Alpha2=P_alpha2(p1,p2,k,self.d,self.T,new_Alpha1,new_Alpha2,new_Mu1,new_Mu2,self.timestamps,self.deltas)
 				
 					r=calc_ratio(new_p_Alpha2- past_p_Alpha2)
 					if(r>=1 or ss.uniform.rvs()<r):
@@ -110,7 +128,8 @@ class Granger_k():
 						new_Alpha2[p2][p1]=self.Alpha2_v[-1][p2][p1]
 						self.reject_alpha2[p2][p1]+=1
 			
-			self.Mu_v.append(new_Mu)
+			self.Mu1_v.append(new_Mu1)
+			self.Mu2_v.append(new_Mu2)
 			self.Alpha1_v.append(new_Alpha1)
 			self.Alpha2_v.append(new_Alpha2)
 
@@ -118,13 +137,16 @@ class Granger_k():
 			
 			
 		self.k_v=self.k_v[self.burn_in:]
-		self.Mu_v=self.Mu_v[self.burn_in:]
+		self.Mu1_v=self.Mu1_v[self.burn_in:]
+		self.Mu2_v=self.Mu2_v[self.burn_in:]
 		self.Alpha1_v=self.Alpha1_v[self.burn_in:]
 		self.Alpha2_v=self.Alpha2_v[self.burn_in:]
 
 		print("k",np.mean(self.k_v))
 		for p1 in range(self.d):
-			print("mu",p1,np.mean([self.Mu_v[i][p1] for i in range(n_iter-burn_in)]))
+			print("mu1",p1,np.mean([self.Mu1_v[i][p1] for i in range(n_iter-burn_in)]))
+		for p1 in range(self.d):
+			print("mu2",p1,np.mean([self.Mu2_v[i][p1] for i in range(n_iter-burn_in)]))
 		for p1 in range(self.d):
 			for p2 in range(self.d):
 				print("Alpha1",p1,p2,np.mean([self.Alpha1_v[i][p1][p2] for i in range(n_iter-burn_in)]))
@@ -132,7 +154,7 @@ class Granger_k():
 			for p2 in range(self.d):
 				print("Alpha2",p1,p2,np.mean([self.Alpha2_v[i][p1][p2] for i in range(n_iter-burn_in)]))
 
-		return((self.k_v,self.Mu_v,self.Alpha1_v,self.Alpha2_v))
+		return((self.k_v,self.Mu1_v,self.Mu2_v,self.Alpha1_v,self.Alpha2_v))
 				
 	def print_rejection_rate(self):
 		print("k",self.reject_k/self.n_iter)
@@ -199,7 +221,7 @@ cdef float calc_delta(int p1,int p2,int t_idx, timestamps, deltas) except -1:
 		deltas[str_delta]=(tp-tpp)
 		return tp - tpp
 
-cdef float P_alpha1(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.ndarray Alpha2,np.ndarray Mu,timestamps,deltas) except? -1:
+cdef float P_alpha1(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.ndarray Alpha2, np.ndarray Mu1, np.ndarray Mu2,timestamps,deltas) except? -1:
 		
 		if(Alpha1[p2][p1]<0):
 			return float("-inf")
@@ -227,7 +249,7 @@ cdef float P_alpha1(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.
 							past_term[p2_i]=Alpha1[p2_i][p1]/(1.+delta_ba)					
 						else:
 							past_term[p2_i]=0.  
-					p+=np.log(Mu[p1]+first_term1)-first_term2
+					p+=np.log(Mu1[p1]+first_term1)-first_term2
 		
 		first_term2=0
 		
@@ -241,7 +263,7 @@ cdef float P_alpha1(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.
 		p-=first_term2
 		return p
 		
-cdef float P_alpha2(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.ndarray Alpha2,np.ndarray Mu,timestamps,deltas) except? -1:
+cdef float P_alpha2(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.ndarray Alpha2, np.ndarray Mu1, np.ndarray Mu2,timestamps,deltas) except? -1:
 	if(Alpha2[p2][p1]<0):
 		return float("-inf")  
 	cdef float p=0
@@ -267,7 +289,7 @@ cdef float P_alpha2(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.
 					else:
 						past_term[p2_i]=0.										
 						
-				p+=np.log(Mu[p1]+second_term1)-second_term2
+				p+=np.log(Mu2[p1]+second_term1)-second_term2
 					
 	second_term2=0	
 
@@ -280,7 +302,7 @@ cdef float P_alpha2(int p1,int p2, float k, int d, float T,np.ndarray Alpha1,np.
 	p-=second_term2
 	return p
 
-cdef float P_k(float k,int d, float T,np.ndarray Alpha1,np.ndarray Alpha2,np.ndarray Mu,timestamps,deltas) except? -1:	
+cdef float P_k(float k,int d, float T,np.ndarray Alpha1,np.ndarray Alpha2, np.ndarray Mu1, np.ndarray Mu2,timestamps,deltas) except? -1:	
 		if(k<0 or k>T):
 			return float("-inf")
 		
@@ -313,7 +335,7 @@ cdef float P_k(float k,int d, float T,np.ndarray Alpha1,np.ndarray Alpha2,np.nda
 						else:
 							past_term[p2]=0.				
 							
-					p+=np.log(Mu[p1]+first_term1)-first_term2
+					p+=np.log(Mu1[p1]+first_term1)-first_term2
 				else:
 					for p2 in range(d):
 							
@@ -329,42 +351,13 @@ cdef float P_k(float k,int d, float T,np.ndarray Alpha1,np.ndarray Alpha2,np.nda
 						else:
 							past_term[p2]=0.
 							
-					p+=np.log(Mu[p1]+second_term1)-second_term2
+					p+=np.log(Mu2[p1]+second_term1)-second_term2
 			second_term2=0
 			for p2 in range(d):
 				if(t_idx>0):
 					second_term2+=past_term[p2]*(T-timestamps[p1][t_idx])
 		
 			p-=second_term2
-		return p
-
-cdef float P_mu(int p1,float k,int d, float T, np.ndarray Alpha1,np.ndarray Alpha2,np.ndarray Mu, timestamps, deltas) except? -1:
-		if(Mu[p1]<=0):
-			return float("-inf")
-		
-		cdef float p=0	
-		cdef float first_term1, second_term1
-		for t_idx in range(len(timestamps[p1])):
-				first_term1=0
-				second_term1=0
-				
-				if(timestamps[p1][t_idx]<=k):
-					for p2 in range(d):
-						delta_ba=calc_delta(p1,p2,t_idx,timestamps,deltas)
-						#delta_ba=calc_delta(p1,p2,t_idx)				
-						if(delta_ba>0):
-							first_term1+=Alpha1[p2][p1]/(1.+delta_ba)				   
-					p+=np.log(Mu[p1]+first_term1)
-				else:
-					for p2 in range(d):
-						delta_ba=calc_delta(p1,p2,t_idx,timestamps,deltas)						
-						#delta_ba=calc_delta(p1,p2,t_idx)				
-						if(delta_ba>0):
-							second_term1+=Alpha2[p2][p1]/(1.+delta_ba)
-							
-					p+=np.log(Mu[p1]+second_term1)
-					
-		p-=T*(Mu[p1])
 		return p
 
 cdef float P_mu1(int p1,float k,int d, float T, np.ndarray Alpha1,np.ndarray Alpha2, np.ndarray Mu1, np.ndarray Mu2, timestamps, deltas) except? -1:
