@@ -15,16 +15,6 @@ class Granger_k():
 			self.T=T
 		self.deltas={}
 
-	def calc_ratio(self,prob):
-		try:
-			r=np.exp(prob)
-		except FloatingPointError as err:
-			if prob<0:
-				return 0
-			else:
-				return 1
-		return r
-				
 	def fit(self,n_iter=400,var_k=15,var_mu=0.03,var_alpha=0.08,burn_in=150,initial_time=0):
 		initial_time=self.T/2.0 if initial_time==0 else initial_time
 		self.n_iter=n_iter
@@ -47,7 +37,6 @@ class Granger_k():
 		self.reject_mu2=[0.]*self.d
 		self.reject_alpha1=[[0.]*self.d for i in range(self.d)]
 		self.reject_alpha2=[[0.]*self.d for i in range(self.d)]
-
 		for i in range(self.n_iter):
 			t_begin=time()
 			######## k ########
@@ -156,9 +145,13 @@ class Granger_k():
 	def print_rejection_rate(self):
 		print("k",self.reject_k/self.n_iter)
 		print("mu1",[i/self.n_iter for i in self.reject_mu1])
+		print("mu1 average",np.mean([i/self.n_iter for i in self.reject_mu1]))
 		print("mu2",[i/self.n_iter for i in self.reject_mu2])
+		print("mu2 average",np.mean([i/self.n_iter for i in self.reject_mu2]))
 		print("alpha1",[[i/self.n_iter for i in j] for j in self.reject_alpha1])
+		print("alpha1 average",np.mean([[i/self.n_iter for i in j] for j in self.reject_alpha1]))
 		print("alpha2",[[i/self.n_iter for i in j] for j in self.reject_alpha2])
+		print("alpha2 average",np.mean([[i/self.n_iter for i in j] for j in self.reject_alpha2]))
 
 	def plot_values(self):		
 		plt.plot(range(len(self.k_v)),self.k_v)
