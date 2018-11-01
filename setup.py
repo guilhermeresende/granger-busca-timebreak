@@ -8,6 +8,8 @@ extensions = [
         include_dirs=[np.get_include()],),
     Extension("likelihood_calc", ["likelihood_calc.pyx"],
         include_dirs=[np.get_include()],),
+    Extension("simulate", ["simulate.pyx"],
+        include_dirs=[np.get_include()],),
 
 ]
 
